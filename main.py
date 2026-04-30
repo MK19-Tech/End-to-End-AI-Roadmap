@@ -1,4 +1,5 @@
 import os
+import glob
 from utils.loaders import load_pdf, load_text
 
 def process_document(file_path):
@@ -15,5 +16,18 @@ def process_document(file_path):
 
 # Example Usage
 if __name__ == "__main__":
-    content = process_document("data/sample*.pdf")
-    print(f"Extracted {len(content)} characters.")
+    # 1. Find all files that match the pattern (sample1.pdf, sample2.pdf, etc.)
+    # Use sorted() to ensure they are processed in order (1, 2, 3...)
+    matching_files = sorted(glob.glob("data/sample*.pdf"))
+
+    # 2. Iterate through each file one by one
+    for file_path in matching_files:
+        content = process_document(file_path)
+        
+        # 3. Print results for the specific file being processed
+        print(f"File: {os.path.basename(file_path)}")
+        print(f"Extracted {len(content)} characters.")
+        print("-" * 20)
+        
+    if not matching_files:
+        print("No files matching 'sample*.pdf' found in the data directory.")
