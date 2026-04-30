@@ -15,5 +15,5 @@ def process_document(file_path):
 
 # Example Usage
 if __name__ == "__main__":
-    content = process_document("data/sample.pdf")
+    content = process_document("data/sample*.pdf")
     print(f"Extracted {len(content)} characters.")
