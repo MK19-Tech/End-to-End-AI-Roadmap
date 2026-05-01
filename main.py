@@ -1,12 +1,14 @@
 import os
-# Silences the Symlink warning
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 import glob
 import logging
+# Silences the Symlink warning
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
 from utils.loaders import load_pdf, load_text
 from utils.processors import clean_text
 from utils.chunkers import chunk_text
-from utils.savers import save_chunks_to_json # New Import
+from utils.savers import save_chunks_to_json
+from utils.vector_store import add_to_vector_db 
 
 # --- CONFIG ---
 CHUNK_SIZE = 750
@@ -33,34 +35,23 @@ def process_pipeline(file_path):
         cleaned = clean_text(raw)
         chunks = chunk_text(cleaned, CHUNK_SIZE, CH_OVERLAP)
         
-        # 3. Save (New Step!)
-        save_path = save_chunks_to_json(file_name, chunks, OUTPUT_FOLDER)
+        # 3. Save to JSON (For backup/inspection)
+        save_chunks_to_json(file_name, chunks, OUTPUT_FOLDER)
         
-        logging.info(f"Success: {file_name} -> {len(chunks)} chunks saved to {save_path}")
+        # 4. Add to Vector DB
+        count = add_to_vector_db(chunks, file_name)
+        
+        logging.info(f"Success: {file_name} -> {count} vectors stored.")
     except Exception as e:
         logging.error(f"Error processing {file_name}: {e}")
 
 if __name__ == "__main__":
     setup_logging()
-    files = sorted(glob.glob(os.path.join(DATA_FOLDER, "sample*.*")))
+    # Find all files in data folder
+    files = sorted(glob.glob(os.path.join(DATA_FOLDER, "*.*")))
     
-    for f in files:
-        process_pipeline(f)
-
-# ... existing imports ...
-from utils.vector_store import add_to_vector_db 
-
-def process_pipeline(file_path):
-    file_name = os.path.basename(file_path)
-    try:
-        # (Previous steps: Load -> Clean -> Chunk)
-        raw = load_pdf(file_path) if file_path.endswith(".pdf") else load_text(file_path)
-        cleaned = clean_text(raw)
-        chunks = chunk_text(cleaned, CHUNK_SIZE, CH_OVERLAP)
-        
-        # New Step: Add to Vector DB
-        count = add_to_vector_db(chunks, file_name)
-        
-        logging.info(f"Success: {file_name} -> {count} vectors stored locally.")
-    except Exception as e:
-        logging.error(f"Error: {e}")
+    if not files:
+        print(f"No files found in {DATA_FOLDER}!")
+    else:
+        for f in files:
+            process_pipeline(f)
