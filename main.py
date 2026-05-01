@@ -1,40 +1,51 @@
 import os
 import glob
-from pypdf import PdfReader  # Ensure pypdf is installed: pip install pypdf
+import re
+import unicodedata
+from pypdf import PdfReader
+
+def clean_text(text):
+    """Logic from Image Step 3: Clean and preprocess"""
+    # 1. Normalize unicode (Optional improvement from image)
+    # This fixes issues like curly quotes or accented characters
+    text = unicodedata.normalize('NFKD', text)
+    
+    # 2. Core cleaning logic from image
+    # Replaces multiple whitespaces/newlines with a single space
+    text = re.sub(r'\s+', ' ', text)
+    
+    # 3. Final trim
+    return text.strip()
 
 def load_pdf(file_path):
-    """Extraction logic from image Step 2: PDF extraction"""
-    # Note: Opening the file path directly is often more stable than 
-    # passing a generic file object for PDFs.
     reader = PdfReader(file_path)
     text = ""
     for page in reader.pages:
-        # Image logic: extraction with fallback to empty string
         text += page.extract_text() or ""
     return text
 
 def load_text(file_object):
-    """Extraction logic from image Step 2: Text/Markdown"""
-    # Image logic: reading and decoding as utf-8
     return file_object.read().decode("utf-8")
 
 def process_document(file_path):
-    # Get the file extension (.pdf, .txt, etc.)
     ext = os.path.splitext(file_path)[1].lower()
     
+    # Extract raw text
     if ext == ".pdf":
-        return load_pdf(file_path)
+        raw_text = load_pdf(file_path)
     elif ext in [".txt", ".md"]:
-        # Image uses binary read 'rb' before decoding
         with open(file_path, "rb") as f:
-            return load_text(f)
+            raw_text = load_text(f)
     else:
-        return "Unsupported file format"
+        return None
+
+    # Clean the text before returning (Step 3 integration)
+    return clean_text(raw_text)
 
 if __name__ == "__main__":
-    # Updated to find PDFs, Text, and Markdown files as per image requirements
-    # Looking for any 'sample' file in the 'data' directory
-    matching_files = sorted(glob.glob("data/sample*.*"))
+    # Path to search
+    data_path = os.path.join("data", "sample*.*")
+    matching_files = sorted(glob.glob(data_path))
 
     processed_count = 0
     for file_path in matching_files:
@@ -42,10 +53,12 @@ if __name__ == "__main__":
         if ext in [".pdf", ".txt", ".md"]:
             content = process_document(file_path)
             
-            print(f"File: {os.path.basename(file_path)}")
-            print(f"Extracted {len(content)} characters.")
-            print("-" * 25)
-            processed_count += 1
+            if content:
+                print(f"File: {os.path.basename(file_path)}")
+                print(f"Cleaned Length: {len(content)} characters.")
+                print(f"Snippet: {content[:50]}...") # Verify cleaning
+                print("-" * 25)
+                processed_count += 1
         
     if processed_count == 0:
-        print("No supported files (PDF, TXT, MD) found matching 'sample*' in the data directory.")
+        print("No supported files found in the 'data/' folder.")
