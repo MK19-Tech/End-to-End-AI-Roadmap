@@ -1,5 +1,8 @@
 import os
+# Silences the Symlink warning
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+# Silences the unauthenticated request warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import logging
 from utils.retriever import get_relevant_chunks
 
