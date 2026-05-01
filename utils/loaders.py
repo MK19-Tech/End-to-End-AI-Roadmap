@@ -1,14 +1,9 @@
 from pypdf import PdfReader
 
 def load_pdf(file_path):
-    """Extracts text from a PDF file."""
     reader = PdfReader(file_path)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() or ""
-    return text
+    return "".join([page.extract_text() or "" for page in reader.pages])
 
-def load_text(file):
-    """Reads raw text or markdown files."""
-    # Assuming 'file' is opened in binary mode 'rb' 
-    return file.read().decode("utf-8")
+def load_text(file_path):
+    with open(file_path, "rb") as f:
+        return f.read().decode("utf-8")
