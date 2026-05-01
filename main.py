@@ -4,58 +4,43 @@ import logging
 from utils.loaders import load_pdf, load_text
 from utils.processors import clean_text
 from utils.chunkers import chunk_text
+from utils.savers import save_chunks_to_json # New Import
 
-# --- CONFIGURATION ---
+# --- CONFIG ---
 CHUNK_SIZE = 750
 CH_OVERLAP = 150
 DATA_FOLDER = "data"
+OUTPUT_FOLDER = "output"
 LOG_FILE = "processing.log"
 
 def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_FILE), # Saves to file
-            logging.StreamHandler()        # Prints to terminal
-        ]
+        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()]
     )
 
-def process_pipeline(file_path, size, overlap):
-    ext = os.path.splitext(file_path)[1].lower()
+def process_pipeline(file_path):
+    file_name = os.path.basename(file_path)
     try:
-        # 1. Extraction
-        if ext == ".pdf":
-            raw = load_pdf(file_path)
-        elif ext in [".txt", ".md"]:
-            raw = load_text(file_path)
-        else:
-            logging.warning(f"Skipping: {file_path} (Unsupported format)")
-            return None
-
-        # 2. Cleaning
-        cleaned = clean_text(raw)
+        # 1. Extract
+        ext = os.path.splitext(file_path)[1].lower()
+        raw = load_pdf(file_path) if ext == ".pdf" else load_text(file_path)
         
-        # 3. Chunking
-        chunks = chunk_text(cleaned, chunk_size=size, overlap=overlap)
-        logging.info(f"Processed {os.path.basename(file_path)}: {len(chunks)} chunks created.")
-        return chunks
-
+        # 2. Clean & Chunk
+        cleaned = clean_text(raw)
+        chunks = chunk_text(cleaned, CHUNK_SIZE, CH_OVERLAP)
+        
+        # 3. Save (New Step!)
+        save_path = save_chunks_to_json(file_name, chunks, OUTPUT_FOLDER)
+        
+        logging.info(f"Success: {file_name} -> {len(chunks)} chunks saved to {save_path}")
     except Exception as e:
-        logging.error(f"Failed to process {file_path}: {str(e)}")
-        return None
+        logging.error(f"Error processing {file_name}: {e}")
 
 if __name__ == "__main__":
     setup_logging()
-    logging.info("--- Starting Document Processing Pipeline ---")
+    files = sorted(glob.glob(os.path.join(DATA_FOLDER, "sample*.*")))
     
-    search_path = os.path.join(DATA_FOLDER, "sample*.*")
-    files = sorted(glob.glob(search_path))
-    
-    if not files:
-        logging.info("No files found to process.")
-    
-    for file_path in files:
-        process_pipeline(file_path, CHUNK_SIZE, CH_OVERLAP)
-
-    logging.info("--- Pipeline Finished ---")
+    for f in files:
+        process_pipeline(f)
