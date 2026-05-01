@@ -7,26 +7,26 @@ from langchain_core.tools import tool
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
 
-# Import your existing local functions
+# Import your existing local database functions
 from utils.retriever import get_relevant_chunks
 
 # --- TOOL DEFINITIONS ---
 
 @tool
 def local_document_search(query: str) -> str:
-    """Use this tool to search internal technical documents and project files for specific details."""
+    """Use this tool to search internal technical documents and project files for specific details stored locally."""
     try:
-        # This calls your existing ChromaDB logic
+        # Calls your existing ChromaDB retrieval logic
         chunks = get_relevant_chunks(query)
         if isinstance(chunks, list):
-            return "\n\n".join(chunks) if chunks else "No relevant documents found."
+            return "\n\n".join(chunks) if chunks else "No relevant documents found in local storage."
         return str(chunks)
     except Exception as e:
         return f"Error accessing local database: {e}"
 
 @tool
 def web_search(query: str) -> str:
-    """Use this tool to search the internet for real-time information, news, or general knowledge."""
+    """Use this tool to search the internet for real-time information, news, or general knowledge not in local files."""
     try:
         search = DuckDuckGoSearchAPIWrapper()
         return search.run(query)
@@ -35,56 +35,55 @@ def web_search(query: str) -> str:
 
 # --- MODEL SETUP ---
 
-# We use Llama 3 via Ollama. Ensure 'ollama run llama3' has been executed once.
+# We MUST use llama3.1 because the original llama3 does not support tool calling (Error 400).
 tools = [local_document_search, web_search]
 model = ChatOllama(
-    model="llama3", 
+    model="llama3.1", 
     temperature=0,
-    base_url="http://localhost:11434" # Standard Ollama port
+    base_url="http://localhost:11434" 
 ).bind_tools(tools)
 
 # --- GRAPH LOGIC ---
 
 def call_model(state: MessagesState):
-    """The decision-making node: Routes to tools or provides a final answer."""
+    """The Agent node: Decides whether to use a tool or finish the conversation."""
     response = model.invoke(state["messages"])
     return {"messages": [response]}
 
-# Define the Graph
+# Define the Graph Structure
 workflow = StateGraph(MessagesState)
 
-# Add Nodes
+# Add Nodes (The 'brain' and the 'tool executor')
 workflow.add_node("agent", call_model)
 workflow.add_node("tools", ToolNode(tools))
 
-# Define Flow
+# Define the Edges
 workflow.add_edge(START, "agent")
 
-# Logic: If the model generated a 'tool_call', go to tools. Otherwise, END.
+# Logic: Check if the model wants to use a tool (tools_condition handles this automatically)
 workflow.add_conditional_edges(
     "agent",
     tools_condition,
 )
 
-# After using a tool, go back to the agent to summarize the result
+# After a tool is used, the result is sent back to the agent to formulate the final answer
 workflow.add_edge("tools", "agent")
 
 # Compile the final application
 agent_app = workflow.compile()
 
-# --- STANDALONE TEST ---
+# --- STANDALONE TEST LOGIC ---
 if __name__ == "__main__":
     print("--- Local Agentic RAG System Testing ---")
-    print("(Ensure Ollama is running and Llama 3 is pulled)")
+    print("Ensure you have run: ollama pull llama3.1")
     
-    test_query = "Search my documents for project details"
+    test_query = "Compare my local project details with current industry web trends."
     inputs = {"messages": [HumanMessage(content=test_query)]}
     
     try:
         for output in agent_app.stream(inputs, stream_mode="values"):
             message = output["messages"][-1]
             print(f"\n[Node]: {message.type.upper()}")
-            print(message.content)
+            print(message.content if message.content else "{Tool Call Generated}")
     except Exception as e:
         print(f"\n[ERROR]: {e}")
-        print("Check if Ollama is running (llama icon in system tray).")
