@@ -1,33 +1,64 @@
 import os
 import glob
-from utils.loaders import load_pdf, load_text
+import re
+import unicodedata
+from pypdf import PdfReader
+
+def clean_text(text):
+    """Logic from Image Step 3: Clean and preprocess"""
+    # 1. Normalize unicode (Optional improvement from image)
+    # This fixes issues like curly quotes or accented characters
+    text = unicodedata.normalize('NFKD', text)
+    
+    # 2. Core cleaning logic from image
+    # Replaces multiple whitespaces/newlines with a single space
+    text = re.sub(r'\s+', ' ', text)
+    
+    # 3. Final trim
+    return text.strip()
+
+def load_pdf(file_path):
+    reader = PdfReader(file_path)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() or ""
+    return text
+
+def load_text(file_object):
+    return file_object.read().decode("utf-8")
 
 def process_document(file_path):
-    # Get the file extension (.pdf, .txt, etc.)
     ext = os.path.splitext(file_path)[1].lower()
     
+    # Extract raw text
     if ext == ".pdf":
-        return load_pdf(file_path)
+        raw_text = load_pdf(file_path)
     elif ext in [".txt", ".md"]:
         with open(file_path, "rb") as f:
-            return load_text(f)
+            raw_text = load_text(f)
     else:
-        return "Unsupported file format"
+        return None
 
-# Example Usage
+    # Clean the text before returning (Step 3 integration)
+    return clean_text(raw_text)
+
 if __name__ == "__main__":
-    # 1. Find all files that match the pattern (sample1.pdf, sample2.pdf, etc.)
-    # Use sorted() to ensure they are processed in order (1, 2, 3...)
-    matching_files = sorted(glob.glob("data/sample*.pdf"))
+    # Path to search
+    data_path = os.path.join("data", "sample*.*")
+    matching_files = sorted(glob.glob(data_path))
 
-    # 2. Iterate through each file one by one
+    processed_count = 0
     for file_path in matching_files:
-        content = process_document(file_path)
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in [".pdf", ".txt", ".md"]:
+            content = process_document(file_path)
+            
+            if content:
+                print(f"File: {os.path.basename(file_path)}")
+                print(f"Cleaned Length: {len(content)} characters.")
+                print(f"Snippet: {content[:50]}...") # Verify cleaning
+                print("-" * 25)
+                processed_count += 1
         
-        # 3. Print results for the specific file being processed
-        print(f"File: {os.path.basename(file_path)}")
-        print(f"Extracted {len(content)} characters.")
-        print("-" * 20)
-        
-    if not matching_files:
-        print("No files matching 'sample*.pdf' found in the data directory.")
+    if processed_count == 0:
+        print("No supported files found in the 'data/' folder.")
