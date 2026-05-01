@@ -44,3 +44,21 @@ if __name__ == "__main__":
     
     for f in files:
         process_pipeline(f)
+
+# ... existing imports ...
+from utils.vector_store import add_to_vector_db 
+
+def process_pipeline(file_path):
+    file_name = os.path.basename(file_path)
+    try:
+        # (Previous steps: Load -> Clean -> Chunk)
+        raw = load_pdf(file_path) if file_path.endswith(".pdf") else load_text(file_path)
+        cleaned = clean_text(raw)
+        chunks = chunk_text(cleaned, CHUNK_SIZE, CH_OVERLAP)
+        
+        # New Step: Add to Vector DB
+        count = add_to_vector_db(chunks, file_name)
+        
+        logging.info(f"Success: {file_name} -> {count} vectors stored locally.")
+    except Exception as e:
+        logging.error(f"Error: {e}")
