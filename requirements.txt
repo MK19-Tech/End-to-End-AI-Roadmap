@@ -1,1 +1,18 @@
-pypdf
+# AI & Core Frameworks
+langchain-ollama>=0.2.0
+langgraph>=0.2.20
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+sentence-transformers>=3.0.0
+
+# Vector Database & Processing
+chromadb>=0.5.0
+pypdf>=4.2.0
+
+# User Interface & Security
+streamlit>=1.35.0
+streamlit-authenticator>=0.3.2
+PyYAML>=6.0.1
+
+# Tools
+duckduckgo-search>=6.0.0
