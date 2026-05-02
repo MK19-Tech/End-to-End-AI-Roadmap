@@ -28,10 +28,9 @@ An end-to-end, privacy-focused **Agentic Retrieval-Augmented Generation (RAG)** 
 
 ## 🌟 Key Features
 - **Autonomous Routing**: Uses **LangGraph** to decide between local PDFs or live web search.
-- **Sentiment Insight**: Integrated **TextBlob** to analyze the sentiment of retrieved context.
+- **Sentiment Insight**: Integrated **Hugging Face Transformers** (via `distilbert-base-uncased`) to analyze the sentiment of retrieved context.
 - **100% Local**: Powered by **Ollama (Llama 3.1)**; your data never leaves your machine.
-- **Smart Citations**: Labels responses with "📍 Source: Local Docs" or "📍 Source: Web Search."
-- **Dockerized**: Ready for deployment using the included Dockerfile.
+- **Web-Augmented**: Uses **Tavily Search API** to fill gaps when local docs don't have the answer.
 
 ---
 
@@ -45,21 +44,14 @@ Running **Llama 3.1 (8B)** locally is hardware-intensive:
 ---
 
 ## 🚀 Getting Started
-
 ### 1. Prerequisites
-- Install [Ollama](https://ollama.com/)
-- Download the model: `ollama pull llama3.1`
+- **Ollama**: Download and install from [ollama.com](https://ollama.com).
+- **Model**: Run `ollama pull llama3.1` in your terminal.
 
-### 2. Installation
-```bash
-git clone https://github.com/yourusername/agentic-rag-system.git
-cd agentic-rag-system
-pip install -r requirements.txt
-```
-
-### 3. Usage
-- **Ingest Docs**: Place PDFs in `/data` and run `python main.py`.
-- **Launch App**: `python -m streamlit run app.py`.
+### 2. Configuration
+Create a `.env` file in the root directory:
+```env
+OLLAMA_BASE_URL=http://localhost:11434
 
 ---
 
