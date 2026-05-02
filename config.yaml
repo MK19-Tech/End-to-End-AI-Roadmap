@@ -1,0 +1,10 @@
+credentials:
+  usernames:
+    admin:
+      email: admin@example.com
+      name: Admin User
+      password: "$2b$12$ozAqUb/v8R4A1cvm0W6od.mDbSobvIejbcDcfPgXWWl0JSMZ6pQeS" # Use stauth.Hasher(['yourpassword']).generate()
+cookie:
+  expiry_days: 30
+  key: some_signature_key
+  name: some_cookie_name
