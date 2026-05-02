@@ -1,0 +1,14 @@
+credentials:
+  usernames:
+    admin_user:
+      email: "admin@gmail.com"
+      name: "Project Admin"
+      password: "PASTE_HASHED_PASSWORD_HERE"
+    research_friend:
+      email: "friend@gmail.com"
+      name: "Research Partner"
+      password: "" # Leave empty for passwordless email login
+cookie:
+  expiry_days: 30
+  key: "some_secure_signature_key"
+  name: "rag_auth_cookie"
