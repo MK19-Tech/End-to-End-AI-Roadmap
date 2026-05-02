@@ -1,10 +1,14 @@
 credentials:
   usernames:
     admin:
-      email: admin@example.com
-      name: Admin User
-      password: "$2b$12$ozAqUb/v8R4A1cvm0W6od.mDbSobvIejbcDcfPgXWWl0JSMZ6pQeS" # Use stauth.Hasher(['yourpassword']).generate()
+      email: mani.chodisetty@gmail.com
+      name: "MK"
+      password: "$2b$12$ozAqUb/v8R4A1cvm0W6od.mDbSobvIejbcDcfPgXWWl0JSMZ6pQeS" # Use the hasher to create this
 cookie:
   expiry_days: 30
-  key: some_signature_key
-  name: some_cookie_name
+  key: "some_random_signature_key"
+  name: "my_openclaw_session"
+preauthorized:
+  emails:
+    - harimk94@gmail.com
+    - mkchodisetty19@gmail.com
