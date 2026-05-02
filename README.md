@@ -47,12 +47,10 @@ Running **Llama 3.1 (8B)** locally is hardware-intensive:
 ### 1. Prerequisites
 - **Ollama**: Download and install from [ollama.com](https://ollama.com).
 - **Model**: Run `ollama pull llama3.1` in your terminal.
-- **Search API**: Get a free API key from [tavily.com](https://tavily.com).
 
 ### 2. Configuration
 Create a `.env` file in the root directory:
 ```env
-TAVILY_API_KEY=your_api_key_here
 OLLAMA_BASE_URL=http://localhost:11434
 
 ---
