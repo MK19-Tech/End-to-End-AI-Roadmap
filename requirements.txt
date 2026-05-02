@@ -8,6 +8,7 @@ sentence-transformers>=3.0.0
 # Vector Database & Processing
 chromadb>=0.5.0
 pypdf>=4.2.0
+textblob>=0.18.0
 
 # User Interface & Security
 streamlit>=1.35.0
