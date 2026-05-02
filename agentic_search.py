@@ -35,10 +35,10 @@ def web_search(query: str) -> str:
 
 # --- MODEL SETUP ---
 
-# We MUST use llama3.1 because the original llama3 does not support tool calling (Error 400).
+# We MUST use llama3.1:8b-instruct-q2_K because the original llama3 does not support tool calling (Error 400).
 tools = [local_document_search, web_search]
 model = ChatOllama(
-    model="llama3.1", 
+    model="llama3.1:8b-instruct-q2_K", 
     temperature=0,
     base_url="http://localhost:11434" 
 ).bind_tools(tools)
