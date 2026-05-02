@@ -1,14 +1,19 @@
 credentials:
   usernames:
-    admin:
+    admin_user:
       email: mani.chodisetty@gmail.com
-      name: "MK"
-      password: "$2b$12$ozAqUb/v8R4A1cvm0W6od.mDbSobvIejbcDcfPgXWWl0JSMZ6pQeS" # Use the hasher to create this
+      name: "Admin"
+      password: "$2b$12$irZD3w8ussmqWnihfnurgOBQxxoqnaQK6MFQBkx77ZRqGpUXlSWY" # Admin still uses a password for safety
+    # Add your friends here
+    friend1:
+      email: mkchodisetty19@gmail.com
+      name: "Friend One"
+      password: "" # Passwordless entry
+    friend2:
+      email: harimk94@gmail.com
+      name: "Friend Two"
+      password: ""
 cookie:
   expiry_days: 30
-  key: "some_random_signature_key"
+  key: "secure_signature_key"
   name: "my_openclaw_session"
-preauthorized:
-  emails:
-    - harimk94@gmail.com
-    - mkchodisetty19@gmail.com
