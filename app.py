@@ -1,3 +1,33 @@
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+
+# 1. Load user credentials (usually from a config.yaml)
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+# 2. Create the authenticator object
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
+)
+
+# 3. Render the Login Widget
+name, authentication_status, username = authenticator.login('main')
+
+if authentication_status == False:
+    st.error('Username/password is incorrect')
+elif authentication_status == None:
+    st.warning('Please enter your username and password')
+elif authentication_status:
+    # --- YOUR EXISTING RAG CODE GOES HERE ---
+    st.sidebar.write(f'Welcome *{name}*')
+    authenticator.logout('Logout', 'sidebar')
+    
+    # [Rest of your app.py logic...]
+
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
 from agentic_search import agent_app
