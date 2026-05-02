@@ -1,42 +1,85 @@
 import streamlit as st
-from langchain_core.messages import HumanMessage, AIMessage
-from agentic_search import agent_app # Import your compiled graph
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from agentic_search import agent_app
 
-# --- PAGE CONFIG ---
 st.set_page_config(page_title="Agentic RAG Assistant", page_icon="🤖")
 st.title("🤖 Local Agentic RAG")
-st.markdown("Query your local docs or the web using **Llama 3**.")
 
-# --- SESSION STATE (Chat History) ---
+# --- SIDEBAR: Settings & Export ---
+with st.sidebar:
+    st.header("Settings")
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+    
+    st.divider()
+
+    st.header("Export Session")
+    if "messages" in st.session_state and len(st.session_state.messages) > 0:
+        # Generate export text
+        chat_text = "--- AGENTIC RAG SESSION EXPORT ---\n\n"
+        for msg in st.session_state.messages:
+            if isinstance(msg, HumanMessage):
+                chat_text += f"USER: {msg.content}\n\n"
+            elif isinstance(msg, AIMessage) and msg.content:
+                chat_text += f"AI: {msg.content}\n"
+                if "source" in msg.additional_kwargs:
+                    chat_text += f"SOURCE: {msg.additional_kwargs['source']}\n"
+                chat_text += "-"*30 + "\n\n"
+        
+        st.download_button(
+            label="📄 Download Chat (.txt)",
+            data=chat_text,
+            file_name="rag_session.txt",
+            mime="text/plain"
+        )
+    else:
+        st.info("No messages to export yet.")
+
+    st.divider()
+    st.info("Llama 3.1 identifies sources from Local Docs or Web Search automatically.")
+
+# --- SESSION STATE ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- DISPLAY CHAT HISTORY ---
+# --- DISPLAY CHAT ---
 for message in st.session_state.messages:
-    with st.chat_message("user" if isinstance(message, HumanMessage) else "assistant"):
-        st.markdown(message.content)
+    if isinstance(message, (HumanMessage, AIMessage)) and message.content:
+        role = "user" if isinstance(message, HumanMessage) else "assistant"
+        with st.chat_message(role):
+            st.markdown(message.content)
+            if hasattr(message, "additional_kwargs") and "source" in message.additional_kwargs:
+                st.caption(f"📍 Source: {message.additional_kwargs['source']}")
 
-# --- USER INPUT ---
+# --- USER INPUT & AGENT LOGIC ---
 if prompt := st.chat_input("Ask me anything..."):
-    # 1. Add user message to history and UI
     st.session_state.messages.append(HumanMessage(content=prompt))
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Run the Agentic Graph
     with st.chat_message("assistant"):
-        with st.spinner("Agent is thinking & searching..."):
+        with st.spinner("Analyzing sources..."):
             try:
-                # Prepare input for the graph
                 inputs = {"messages": st.session_state.messages}
-                
-                # Run graph (We take the last message from the result)
                 final_state = agent_app.invoke(inputs)
-                response_text = final_state["messages"][-1].content
                 
-                # 3. Show and Save Response
-                st.markdown(response_text)
-                st.session_state.messages.append(AIMessage(content=response_text))
+                # Extract used tools for citations
+                sources_used = []
+                for msg in final_state["messages"]:
+                    if isinstance(msg, ToolMessage):
+                        sources_used.append(msg.name.replace("_", " ").title())
+                
+                unique_sources = list(set(sources_used))
+                source_text = ", ".join(unique_sources) if unique_sources else "General Knowledge"
+
+                response_message = final_state["messages"][-1]
+                response_message.additional_kwargs["source"] = source_text
+                
+                st.markdown(response_message.content)
+                st.caption(f"📍 Source: {source_text}")
+                
+                st.session_state.messages.append(response_message)
                 
             except Exception as e:
                 st.error(f"Error: {e}")
