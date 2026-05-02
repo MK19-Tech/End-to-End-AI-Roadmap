@@ -62,14 +62,3 @@ OLLAMA_BASE_URL=http://localhost:11434
 docker build -t agentic-rag .
 docker run -p 8501:8501 agentic-rag
 ```
----
-mermaid
-graph TD
-    A[User Query] --> B{Router: LangGraph}
-    B -- Found in Vector DB --> C[Local RAG Response]
-    B -- Not in Docs --> D[Tavily Web Search]
-    D --> E[Scrape & Summarize]
-    E --> F[Web-Augmented Response]
-    C --> G[Sentiment Analysis]
-    F --> G[Sentiment Analysis]
-    G --> H[Final Answer + Citations]
