@@ -1,12 +1,17 @@
+import streamlit as st
 import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
+from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from agentic_search import agent_app
 
-# 1. Load user credentials (usually from a config.yaml)
+# --- 1. CONFIG & AUTHENTICATION SETUP ---
+# Note: Ensure st.set_page_config is the VERY FIRST streamlit command
+st.set_page_config(page_title="Agentic RAG Assistant", page_icon="🤖")
+
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
-# 2. Create the authenticator object
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
@@ -14,102 +19,92 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-# 3. Render the Login Widget
-name, authentication_status, username = authenticator.login('main')
+# --- 2. LOGIN INTERFACE ---
+# We call .login() without assignment to avoid the "unpacking" error
+authenticator.login(location='main')
 
-if authentication_status == False:
+# Check status directly from session_state as per latest library updates
+if st.session_state["authentication_status"] is False:
     st.error('Username/password is incorrect')
-elif authentication_status == None:
+elif st.session_state["authentication_status"] is None:
     st.warning('Please enter your username and password')
-elif authentication_status:
-    # --- YOUR EXISTING RAG CODE GOES HERE ---
-    st.sidebar.write(f'Welcome *{name}*')
-    authenticator.logout('Logout', 'sidebar')
-    
-    # [Rest of your app.py logic...]
+elif st.session_state["authentication_status"]:
 
-import streamlit as st
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
-from agentic_search import agent_app
+    # --- 3. LOGGED IN UI ---
+    st.title("🤖 Local Agentic RAG")
 
-st.set_page_config(page_title="Agentic RAG Assistant", page_icon="🤖")
-st.title("🤖 Local Agentic RAG")
-
-# --- SIDEBAR: Settings & Export ---
-with st.sidebar:
-    st.header("Settings")
-    if st.button("🗑️ Clear Chat History"):
-        st.session_state.messages = []
-        st.rerun()
-    
-    st.divider()
-
-    st.header("Export Session")
-    if "messages" in st.session_state and len(st.session_state.messages) > 0:
-        # Generate export text
-        chat_text = "--- AGENTIC RAG SESSION EXPORT ---\n\n"
-        for msg in st.session_state.messages:
-            if isinstance(msg, HumanMessage):
-                chat_text += f"USER: {msg.content}\n\n"
-            elif isinstance(msg, AIMessage) and msg.content:
-                chat_text += f"AI: {msg.content}\n"
-                if "source" in msg.additional_kwargs:
-                    chat_text += f"SOURCE: {msg.additional_kwargs['source']}\n"
-                chat_text += "-"*30 + "\n\n"
+    # --- SIDEBAR: Profile, Reset, & Export ---
+    with st.sidebar:
+        st.write(f"Welcome, **{st.session_state['name']}**")
+        authenticator.logout('Logout', 'sidebar')
         
-        st.download_button(
-            label="📄 Download Chat (.txt)",
-            data=chat_text,
-            file_name="rag_session.txt",
-            mime="text/plain"
-        )
-    else:
-        st.info("No messages to export yet.")
+        st.divider()
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state.messages = []
+            st.rerun()
+        
+        st.divider()
+        # Export Logic
+        if "messages" in st.session_state and len(st.session_state.messages) > 0:
+            chat_text = "--- AGENTIC RAG SESSION EXPORT ---\n\n"
+            for msg in st.session_state.messages:
+                if isinstance(msg, HumanMessage):
+                    chat_text += f"USER: {msg.content}\n\n"
+                elif isinstance(msg, AIMessage) and msg.content:
+                    chat_text += f"AI: {msg.content}\n"
+                    if "source" in msg.additional_kwargs:
+                        chat_text += f"SOURCE: {msg.additional_kwargs['source']}\n"
+                    chat_text += "-"*30 + "\n\n"
+            
+            st.download_button("📄 Download Chat (.txt)", chat_text, "rag_session.txt")
 
-    st.divider()
-    st.info("Llama 3.1 identifies sources from Local Docs or Web Search automatically.")
+    # --- 4. CHAT HISTORY MANAGEMENT ---
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# --- SESSION STATE ---
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+    # Display previous messages
+    for message in st.session_state.messages:
+        if isinstance(message, (HumanMessage, AIMessage)) and message.content:
+            role = "user" if isinstance(message, HumanMessage) else "assistant"
+            with st.chat_message(role):
+                st.markdown(message.content)
+                if hasattr(message, "additional_kwargs") and "source" in message.additional_kwargs:
+                    st.caption(f"📍 Source: {message.additional_kwargs['source']}")
 
-# --- DISPLAY CHAT ---
-for message in st.session_state.messages:
-    if isinstance(message, (HumanMessage, AIMessage)) and message.content:
-        role = "user" if isinstance(message, HumanMessage) else "assistant"
-        with st.chat_message(role):
-            st.markdown(message.content)
-            if hasattr(message, "additional_kwargs") and "source" in message.additional_kwargs:
-                st.caption(f"📍 Source: {message.additional_kwargs['source']}")
+    # --- 5. CHAT INPUT & AGENT EXECUTION ---
+    if prompt := st.chat_input("Ask me anything..."):
+        # Add user message to state and UI
+        st.session_state.messages.append(HumanMessage(content=prompt))
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-# --- USER INPUT & AGENT LOGIC ---
-if prompt := st.chat_input("Ask me anything..."):
-    st.session_state.messages.append(HumanMessage(content=prompt))
-    with st.chat_message("user"):
-        st.markdown(prompt)
+        # Generate Assistant response
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing sources..."):
+                try:
+                    # Run the Agentic Graph
+                    inputs = {"messages": st.session_state.messages}
+                    final_state = agent_app.invoke(inputs)
+                    
+                    # Extract used tools for Source Citations
+                    sources_used = []
+                    for msg in final_state["messages"]:
+                        if isinstance(msg, ToolMessage):
+                            sources_used.append(msg.name.replace("_", " ").title())
+                    
+                    unique_sources = list(set(sources_used))
+                    source_text = ", ".join(unique_sources) if unique_sources else "General Knowledge"
 
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing sources..."):
-            try:
-                inputs = {"messages": st.session_state.messages}
-                final_state = agent_app.invoke(inputs)
-                
-                # Extract used tools for citations
-                sources_used = []
-                for msg in final_state["messages"]:
-                    if isinstance(msg, ToolMessage):
-                        sources_used.append(msg.name.replace("_", " ").title())
-                
-                unique_sources = list(set(sources_used))
-                source_text = ", ".join(unique_sources) if unique_sources else "General Knowledge"
-
-                response_message = final_state["messages"][-1]
-                response_message.additional_kwargs["source"] = source_text
-                
-                st.markdown(response_message.content)
-                st.caption(f"📍 Source: {source_text}")
-                
-                st.session_state.messages.append(response_message)
-                
-            except Exception as e:
-                st.error(f"Error: {e}")
+                    # Get final text response
+                    response_message = final_state["messages"][-1]
+                    response_message.additional_kwargs["source"] = source_text
+                    
+                    # Render Final Response
+                    st.markdown(response_message.content)
+                    st.caption(f"📍 Source: {source_text}")
+                    
+                    # Save to state
+                    st.session_state.messages.append(response_message)
+                    
+                except Exception as e:
+                    st.error(f"System Error: {e}")
